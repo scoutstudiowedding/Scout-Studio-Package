@@ -1170,11 +1170,9 @@ function saveBooking(remove){
   const date=$("bkDate").value; let date2=$("bkDate2").value;
   if(!date) return status("bk","Sila pilih tarikh.");
   if(remove){
-    const ex = S.bookings.find(b=>b.id===editId) || S.bookings.find(b=>b.date===date||b.date2===date);
-    S.bookings = S.bookings.filter(b=>b!==ex);
     S.booked = S.booked.filter(d=>d!==date && d!==date2);
-    editId=null; persist(); renderPublic(); renderAdmin(); loadBk(null,date);
-    return status("bk","Tarikh dibuka semula.");
+    editId=null; persist(); renderPublic(); renderAdmin(); loadBk(null);
+    return status("bk","Tarikh dibuka semula. Senarai tempahan tidak berubah.");
   }
   const name=$("bkName").value.trim();
   if(!name) return status("bk","Sila isi nama klien.");
@@ -1193,8 +1191,8 @@ function saveBooking(remove){
   let saved;
   if(ex){ Object.assign(ex,data); saved=ex; } else { saved={id:"b"+Date.now(),...data}; S.bookings.push(saved); }
   S.booked = S.booked.filter(d=>!dates.includes(d));
-  persist(); renderPublic(); renderAdmin(); loadBk(saved);
-  status("bk","Tempahan disimpan. Tarikh ditandakan.");
+  persist(); renderPublic(); renderAdmin(); loadBk(null);
+  status(saved===ex ? "bk" : "bk", ex ? "Tempahan dikemas kini." : "Tempahan baru disimpan. Borang dikosongkan untuk tempahan seterusnya.");
 }
 function renderBookings(){
   const list=[...S.bookings].sort((a,b)=>a.date.localeCompare(b.date)||(a.start||"").localeCompare(b.start||""));
