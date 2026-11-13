@@ -361,6 +361,25 @@ th{color:var(--muted);font-weight:500;font-size:.78rem}
 .live-pill[data-st="err"] i{background:#C44B4B}
 .live-pill[data-st="warn"] i{background:#E0B43A}
 @keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(63,166,99,.55)}70%{box-shadow:0 0 0 8px rgba(63,166,99,0)}100%{box-shadow:0 0 0 0 rgba(63,166,99,0)}}
+
+/* ===== Mobile fit: fluid columns that can shrink, calendar scales to the screen ===== */
+*,*::before,*::after{box-sizing:border-box}
+img,iframe,video,svg{max-width:100%}
+html,body{max-width:100%;overflow-x:hidden}
+@media (max-width:560px){
+  body{padding:12px}
+  .wrap{padding:0 12px;width:100%;max-width:100%}
+  .hero-grid,.cal-wrap,.q-wrap,.pkgs,.fgrid{grid-template-columns:minmax(0,1fr)}
+  .cal-wrap>*,.hero-grid>*,.q-wrap>*{min-width:0}
+  .panel{padding:14px;border-radius:20px}
+  .cal-head{margin-bottom:10px}
+  .cal-head h3{font-size:1.2rem}
+  .live-pill{font-size:.72rem;padding:5px 10px;margin-bottom:10px}
+  .grid{grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+  .day{border-radius:9px;font-size:.74rem;min-width:0;overflow:hidden;padding:2px}
+  .day small{font-size:.46rem;margin-top:1px;line-height:1.05}
+  .legend{font-size:.72rem;gap:8px}
+}
 </style>
 </head>
 <body>
