@@ -247,7 +247,7 @@ input[readonly]{cursor:pointer}
 .bk-sec{padding-bottom:26px;margin-bottom:26px;border-bottom:1px solid var(--line)}
 .bk-sec:last-child{border-bottom:0;margin-bottom:0}
 .bk-sec>h3{font-size:1.4rem;margin-bottom:6px}
-.day small{display:block;font-size:.62rem;line-height:1.1;margin-top:3px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.day small{display:block;font-size:.62rem;line-height:1.15;margin-top:2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
 @media print{
   body *{visibility:hidden}
   #quoteBox, #quoteBox *{visibility:visible}
@@ -1036,11 +1036,16 @@ function renderCal(mode){
     if(past) cls += " past"; else if(bk) cls += " booked"; else if(pt) cls += " partial"; else cls += " free";
     if(!isA && selDates.includes(k)) cls += " sel";
     const dis = !isA && (past||bk) ? "disabled" : "";
-    const nm = (!isA && (BL[k]||[]).length) ? shortName(BL[k]) : "";
-    h += `<button class="${cls}" ${dis} data-${isA?"adate":"date"}="${k}">${d}${nm?`<small>${esc(nm)}</small>`:""}</button>`;
+    const bl = (!isA && BL[k]) ? BL[k] : [];
+    const names = bl.slice(0,3).map(b=>`<small>${esc(firstWord(b.name))}</small>`).join("") + (bl.length>3 ? `<small>+${bl.length-3} lagi</small>` : "");
+    h += `<button class="${cls}" ${dis} data-${isA?"adate":"date"}="${k}">${d}${names}</button>`;
   }
   $(grid).innerHTML = h;
   if(!isA) renderBlkList();
+}
+function firstWord(n){
+  const w = String(n||"").trim().split(/\s+/)[0] || "";
+  return w.length > 10 ? w.slice(0,9) + "…" : w;
 }
 function shortName(list){
   const n = (list[0] && list[0].name) || "";
