@@ -825,10 +825,41 @@ function persist(){
   localStorage.setItem("scout-v2", JSON.stringify(S));
   if(db && unlocked){
     db.collection("scout").doc("state").set(clone(S)).then(()=>markSynced()).catch(onFsError);
-    db.collection("scout").doc("public").set({blocked:publicBlockedList(), caps:S.slotCap}).catch(onFsError);
+    db.collection("scout").doc("public").set(publicPayload()).catch(onFsError);
   }
 }
 function isKonvoB(b){ return b.event==="konvo"; }
+function publicPayload(){
+  const s = S.settings || {};
+  return {
+    blocked: publicBlockedList(),
+    caps: S.slotCap || {},
+    packages: Array.isArray(S.packages) ? S.packages : [],
+    pkgVersion: S.pkgVersion || 0,
+    faq: Array.isArray(S.faq) ? S.faq : [],
+    faqVersion: S.faqVersion || 0,
+    settings: {
+      wa: s.wa || "", heroImg: s.heroImg || "",
+      fastPhoto: s.fastPhoto || 0, fastVideo: s.fastVideo || 0,
+      deposit: s.deposit || 0, balanceDays: s.balanceDays || 0,
+      transport: s.transport || {}
+    }
+  };
+}
+/* Customers apply the shared content in memory only (never saved to their device) */
+function applyPublicContent(p){
+  if(!p) return;
+  if(Array.isArray(p.packages) && p.packages.length) S.packages = p.packages;
+  if(Array.isArray(p.faq) && p.faq.length) S.faq = p.faq;
+  if(p.settings){
+    const x = p.settings;
+    S.settings = {...S.settings,
+      wa: x.wa || S.settings.wa, heroImg: x.heroImg || S.settings.heroImg,
+      fastPhoto: x.fastPhoto || S.settings.fastPhoto, fastVideo: x.fastVideo || S.settings.fastVideo,
+      deposit: x.deposit || S.settings.deposit, balanceDays: x.balanceDays || S.settings.balanceDays,
+      transport: x.transport || S.settings.transport};
+  }
+}
 function publicBlockedList(){
   return [...S.booked.map(d=>({date:d,name:"Ditempah",event:"",kind:"wedding",start:"",end:""})),
     ...S.bookings.flatMap(b=>{
@@ -935,6 +966,7 @@ function startPublicListener(){
   unsubPub = db.collection("scout").doc("public").onSnapshot({includeMetadataChanges:true}, d=>{
     if(d.metadata.hasPendingWrites) return;
     PUB = d.exists ? d.data() : {blocked:[]};
+    applyPublicContent(PUB);
     renderPublic();
     if(!d.metadata.fromCache) markSynced();
   }, onFsError);
@@ -942,12 +974,11 @@ function startPublicListener(){
 function startAdminSync(){
   if(!db || !unlocked || listenersOn) return;
   listenersOn = true;
-  // Push the current local admin data up to the public snapshot once
-  db.collection("scout").doc("public").set({blocked:publicBlockedList(), caps:S.slotCap}).catch(onFsError);
   unsubState = db.collection("scout").doc("state").onSnapshot({includeMetadataChanges:true}, d=>{
     if(d.metadata.hasPendingWrites) return;
     if(d.exists){
       S = merge(d.data()); localStorage.setItem("scout-v2", JSON.stringify(S));
+      db.collection("scout").doc("public").set(publicPayload()).catch(onFsError);
       renderPublic(); renderCal("admin"); renderBookings(); renderEnq();
     } else persist();
     if(!d.metadata.fromCache) markSynced();
