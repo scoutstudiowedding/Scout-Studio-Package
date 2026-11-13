@@ -354,6 +354,13 @@ th{color:var(--muted);font-weight:500;font-size:.78rem}
 }
 .vid-ctrl{display:none}
 @media (max-width:640px){.vid-ctrl{display:flex;margin:0 0 12px}}
+.live-pill{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;background:#fff;border:1px solid var(--line);font-size:.8rem;color:var(--ink);margin:0 0 14px;align-self:flex-start}
+.live-pill i{width:9px;height:9px;border-radius:50%;background:#9A9A9A;display:inline-block;flex:0 0 auto}
+.live-pill[data-st="ok"] i{background:#3FA663;box-shadow:0 0 0 0 rgba(63,166,99,.6);animation:livePulse 1.8s infinite}
+.live-pill[data-st="wait"] i{background:#7FA7D9;animation:syncPulse 1.2s ease-in-out infinite}
+.live-pill[data-st="err"] i{background:#C44B4B}
+.live-pill[data-st="warn"] i{background:#E0B43A}
+@keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(63,166,99,.55)}70%{box-shadow:0 0 0 8px rgba(63,166,99,0)}100%{box-shadow:0 0 0 0 rgba(63,166,99,0)}}
 </style>
 </head>
 <body>
@@ -455,6 +462,7 @@ th{color:var(--muted);font-weight:500;font-size:.78rem}
           <button class="icon-btn" data-cal="1" aria-label="Bulan seterusnya">&#8250;</button>
         </div>
       </div>
+      <div class="live-pill" id="livePill" data-st="off"><i></i><span id="livePillTxt">Belum disambung</span></div>
       <div class="grid" id="calGrid"></div>
       <div class="legend"><span><i style="background:#BFE3C8"></i>Kosong</span><span><i style="background:#F7E29A"></i>1 slot sahaja</span><span><i style="background:#F0B3B3"></i>Penuh</span></div>
     </div>
@@ -696,8 +704,14 @@ th{color:var(--muted);font-weight:500;font-size:.78rem}
           <textarea id="sFb" style="min-height:160px;font-family:monospace;font-size:.82rem" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","appId":"..."}'></textarea>
         </label>
         <p class="muted" style="font-size:.82rem;margin-top:8px">Cipta projek di Firebase Console, aktifkan Cloud Firestore, dan tetapkan peraturan akses yang sesuai. Kosongkan kotak ini untuk guna storan tempatan sahaja.</p>
-        <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="btn" data-save="firebase">Simpan &amp; Sambung Firebase</button><span class="muted" id="syncState"></span></div>
+        <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="btn" data-save="firebase">Simpan Konfigurasi</button></div>
         <div class="status" id="st-firebase"></div>
+
+        <div style="margin-top:22px;padding-top:18px;border-top:1px dashed var(--line)">
+          <p class="muted" style="font-size:.84rem;margin-bottom:10px">Sync automatik berjalan sendiri. Guna butang di bawah hanya jika status sync bermasalah. Butang ini akan sambung semula dan hantar data peranti ini ke cloud.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="btn soft" data-save="forcesync">Paksa Sync Sekarang</button><span class="muted" id="syncState"></span></div>
+          <div class="status" id="st-sync"></div>
+        </div>
       </div>
 
       <div class="pane panel" id="aData">
@@ -848,12 +862,25 @@ function setSync(t, st){
   const b=document.getElementById("syncBadge"), bt=document.getElementById("syncBadgeTxt");
   if(!b||!bt) return;
   b.dataset.st = st||"off";
+  updateLivePill(st);
   const time=new Date().toLocaleTimeString("ms-MY",{hour:"2-digit",minute:"2-digit"});
   bt.textContent =
       st==="ok"   ? "Disegerakkan dengan cloud · "+time
     : st==="err"  ? "Ralat sync: "+(t||"sila semak")
     : st==="warn" ? "Storan tempatan sahaja"
     : st==="wait" ? "Menyambung ke cloud..."
+    : "Belum disambung";
+}
+function updateLivePill(st){
+  const p=document.getElementById("livePill"), t=document.getElementById("livePillTxt");
+  if(!p||!t) return;
+  const time=new Date().toLocaleTimeString("ms-MY",{hour:"2-digit",minute:"2-digit"});
+  p.dataset.st = st||"off";
+  t.textContent =
+      st==="ok"   ? "Kalendar langsung · dikemaskini "+time
+    : st==="wait" ? "Menyemak ketersediaan..."
+    : st==="err"  ? "Kalendar tidak dapat dikemaskini. Sila hubungi kami di WhatsApp"
+    : st==="warn" ? "Tiada sambungan langsung"
     : "Belum disambung";
 }
 function stopWatchdog(){ clearTimeout(syncWatch); syncWatch=null; }
@@ -1308,8 +1335,23 @@ function save(what){
     const changed = clean !== (S.settings.firebase||"");
     S.settings.firebase = clean; localStorage.setItem("scout-v2", JSON.stringify(S));
     $("sFb").value = clean;
-    status("firebase", changed ? "Disimpan. Menyambung semula ke cloud..." : "Sambungan dicuba semula.");
-    initFirebase();
+    status("firebase", changed ? "Konfigurasi disimpan. Auto sync sedang menyambung..." : "Tiada perubahan pada konfigurasi.");
+    if(changed){ stopListeners(); clearRetry(); db = null; initFirebase(); }
+  }
+  if(what==="forcesync"){
+    status("sync","Memaksa sync...");
+    stopListeners(); clearRetry(); db = null;
+    initFirebase().then(()=>{
+      if(db && unlocked){
+        db.collection("scout").doc("state").set(clone(S))
+          .then(()=>{ markSynced(); status("sync","Data peranti ini berjaya dihantar ke cloud."); })
+          .catch(e=>{ onFsError(e); status("sync","Gagal hantar data: "+(e.message||e.code)); });
+      } else if(db){
+        status("sync","Sambung semula berjaya. Log masuk admin untuk hantar data.");
+      } else {
+        status("sync","Belum berjaya sambung. Semak status di atas.");
+      }
+    });
   }
 }
 
@@ -1456,6 +1498,7 @@ $("bkEvent").addEventListener("change", toggleKonvo);
 window.addEventListener("hashchange",route);
 renderPublic(); route();
 initFirebase().catch(e=>setSync("Ralat: "+e.message,"err"));
+window.addEventListener("online", ()=>{ if(!db && S.settings.firebase) initFirebase(); });
 </script>
 </body>
 </html>
