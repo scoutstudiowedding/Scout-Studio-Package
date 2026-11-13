@@ -801,7 +801,7 @@ let S = (()=>{ try{ return merge(JSON.parse(localStorage.getItem("scout-v2"))); 
 let db = null, unlocked = false;
 
 let editId=null, PUB=null, ENQ=[], unsubState=null, unsubEnq=null;
-const FB_DEFAULT = ""; // Paste your Firebase web config JSON here once, so every visitor syncs.
+const FB_DEFAULT = "{\"apiKey\":\"AIzaSyAkep9XSeyoMF-gBR6GdEMNFP5iPABMIo0\",\"authDomain\":\"scout-studio-website-9f865.firebaseapp.com\",\"projectId\":\"scout-studio-website-9f865\",\"storageBucket\":\"scout-studio-website-9f865.firebasestorage.app\",\"messagingSenderId\":\"879255422970\",\"appId\":\"1:879255422970:web:3ca3880b3238b6b6474643\",\"measurementId\":\"G-SGPVS175NS\"}"; // Built-in Firebase config: every visitor and device syncs automatically. // Paste your Firebase web config JSON here once, so every visitor syncs.
 function persist(){
   localStorage.setItem("scout-v2", JSON.stringify(S));
   if(db && unlocked){
